@@ -20,7 +20,7 @@ package org.apache.fineract.cn.anubis.controller;
 
 import javax.validation.Valid;
 import org.apache.fineract.cn.anubis.annotation.AcceptedTokenType;
-import org.apache.fineract.cn.anubis.annotation.Permittable;
+import org.apache.fineract.cn.anubis.annotation.SystemPermittable;
 import org.apache.fineract.cn.anubis.api.v1.domain.ApplicationSignatureSet;
 import org.apache.fineract.cn.anubis.api.v1.domain.Signature;
 import org.apache.fineract.cn.anubis.api.v1.validation.ValidKeyTimestamp;
@@ -49,7 +49,7 @@ public class SignatureCreatorRestController {
     this.tenantAuthorizationDataRepository = tenantAuthorizationDataRepository;
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(
           value = "/signatures/{timestamp}",
           method = RequestMethod.POST,

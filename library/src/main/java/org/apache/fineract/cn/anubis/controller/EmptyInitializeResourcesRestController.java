@@ -19,7 +19,7 @@
 package org.apache.fineract.cn.anubis.controller;
 
 import org.apache.fineract.cn.anubis.annotation.AcceptedTokenType;
-import org.apache.fineract.cn.anubis.annotation.Permittable;
+import org.apache.fineract.cn.anubis.annotation.SystemPermittable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/initialize")
 public class EmptyInitializeResourcesRestController {
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(
       method = RequestMethod.POST,
       consumes = {MediaType.ALL_VALUE},

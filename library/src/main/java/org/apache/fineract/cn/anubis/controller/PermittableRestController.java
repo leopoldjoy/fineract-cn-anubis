@@ -19,7 +19,7 @@
 package org.apache.fineract.cn.anubis.controller;
 
 import org.apache.fineract.cn.anubis.annotation.AcceptedTokenType;
-import org.apache.fineract.cn.anubis.annotation.Permittable;
+import org.apache.fineract.cn.anubis.annotation.GuestPermittable;
 import org.apache.fineract.cn.anubis.api.v1.domain.PermittableEndpoint;
 import org.apache.fineract.cn.anubis.service.PermittableService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +43,7 @@ public class PermittableRestController {
     this.service = service;
   }
 
-  @Permittable(AcceptedTokenType.GUEST)
+  @GuestPermittable()
   @RequestMapping(
       method = RequestMethod.GET,
       consumes = MediaType.ALL_VALUE,

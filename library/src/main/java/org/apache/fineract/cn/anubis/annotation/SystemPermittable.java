@@ -26,10 +26,7 @@ import java.lang.annotation.*;
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Repeatable(Permittables.class)
-public @interface Permittable {
-  AcceptedTokenType value() default AcceptedTokenType.TENANT;
-  String groupId() default "";
-  String permittedEndpoint() default "";
+@Repeatable(SystemPermittables.class)
+public @interface SystemPermittable {
   boolean acceptTokenIntendedForForeignApplication() default false;
 }

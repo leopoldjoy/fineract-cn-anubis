@@ -21,7 +21,6 @@ package org.apache.fineract.cn.anubis.service;
 import static org.apache.fineract.cn.anubis.config.AnubisConstants.LOGGER_NAME;
 
 import io.jsonwebtoken.lang.Assert;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,8 +31,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.apache.fineract.cn.anubis.annotation.AcceptedTokenType;
-import org.apache.fineract.cn.anubis.annotation.Permittable;
+import org.apache.fineract.cn.anubis.annotation.SystemPermittable;
 import org.apache.fineract.cn.anubis.api.v1.domain.AllowedOperation;
 import org.apache.fineract.cn.anubis.api.v1.domain.PermittableEndpoint;
 import org.apache.fineract.cn.anubis.config.AnubisProperties;
@@ -58,7 +58,7 @@ public class PermittableService {
   private final RequestMappingHandlerMapping requestMappingHandlerMapping;
   private final EndpointHandlerMapping endpointHandlerMapping;
   private final ApplicationName applicationName;
-  private final Permittable defaultPermittable;
+  private final AnubisProperties anubisProperties;
 
   @Autowired
   public PermittableService(final RequestMappingHandlerMapping requestMappingHandlerMapping,
@@ -69,13 +69,11 @@ public class PermittableService {
     this.requestMappingHandlerMapping = requestMappingHandlerMapping;
     this.endpointHandlerMapping = endpointHandlerMapping;
     this.applicationName = applicationName;
+    this.anubisProperties = anubisProperties;
     if (anubisProperties.getAcceptGuestTokensForSystemEndpoints()) {
       logger.error("The service property anubis.tokenTypeRequiredForSystemEndpoints is set to GUEST. This " +
           "feature is intended for use only in test environments. Turning it on in a production environment " +
           "could be a serious security vulnerability.");
-      this.defaultPermittable = guestPermittable();}
-    else {
-      this.defaultPermittable = systemPermittable();
     }
   }
 
@@ -140,14 +138,23 @@ public class PermittableService {
   private static class WhatINeedToBuildAPermittableEndpoint
   {
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    final Permittable annotation;
-    final Set<String> patterns;
-    final Set<RequestMethod> methods;
+    final @Nullable SystemPermittable annotation;
+    final @Nonnull Set<String> patterns;
+    final @Nonnull Set<RequestMethod> methods;
 
-    WhatINeedToBuildAPermittableEndpoint(final @Nonnull Permittable annotation,
-                                         final @Nonnull Set<String> patterns,
-                                         final @Nonnull Set<RequestMethod> methods) {
+    WhatINeedToBuildAPermittableEndpoint(
+            final @Nonnull SystemPermittable annotation,
+            final @Nonnull Set<String> patterns,
+            final @Nonnull Set<RequestMethod> methods) {
       this.annotation = annotation;
+      this.patterns = patterns;
+      this.methods = methods;
+    }
+
+    WhatINeedToBuildAPermittableEndpoint(
+            final @Nonnull Set<String> patterns,
+            final @Nonnull Set<RequestMethod> methods) {
+      this.annotation = null;
       this.patterns = patterns;
       this.methods = methods;
     }
@@ -159,8 +166,8 @@ public class PermittableService {
       final Map<RequestMappingInfo, HandlerMethod> handlerMethods,
       final @Nonnull Set<PermittableEndpoint> permittableEndpoints) {
     handlerMethods.entrySet()
-        .stream().flatMap(handlerMethod -> PermittableService.whatINeedToBuildAPermittableEndpoint(handlerMethod, defaultPermittable))
-        .filter(whatINeedToBuildAPermittableEndpoint -> acceptedTokenTypes.contains(getAcceptedTokenType(whatINeedToBuildAPermittableEndpoint)))
+            .stream().flatMap(handlerMethod -> PermittableService.whatINeedToBuildAPermittableEndpoint(handlerMethod))
+            .filter(whatINeedToBuildAPermittableEndpoint -> acceptedTokenTypes.contains(getAcceptedTokenType(whatINeedToBuildAPermittableEndpoint, anubisProperties)))
         .forEachOrdered(whatINeedToBuildAPermittableEndpoint ->
             whatINeedToBuildAPermittableEndpoint.patterns
                 .forEach(pattern -> whatINeedToBuildAPermittableEndpoint.methods
@@ -178,8 +185,17 @@ public class PermittableService {
                 ));
   }
 
-  static private AcceptedTokenType getAcceptedTokenType(final @Nonnull WhatINeedToBuildAPermittableEndpoint whatINeedToBuildAPermittableEndpoint) {
-    return whatINeedToBuildAPermittableEndpoint.annotation.value();
+  static private AcceptedTokenType getAcceptedTokenType(
+          final @Nonnull WhatINeedToBuildAPermittableEndpoint whatINeedToBuildAPermittableEndpoint,
+          final @Nonnull AnubisProperties anubisProperties) {
+    if (whatINeedToBuildAPermittableEndpoint.annotation == null) {
+      if (anubisProperties.getAcceptGuestTokensForSystemEndpoints())
+        return AcceptedTokenType.GUEST;
+      else
+        return AcceptedTokenType.SYSTEM;
+    }
+    else
+      return whatINeedToBuildAPermittableEndpoint.annotation.value();
   }
 
   static private String getPath(final @Nonnull String applicationName,
@@ -200,81 +216,20 @@ public class PermittableService {
   }
 
   static private Stream<WhatINeedToBuildAPermittableEndpoint> whatINeedToBuildAPermittableEndpoint(
-          final Map.Entry<RequestMappingInfo, HandlerMethod> handlerMethod,
-          final Permittable defaultPermittable) {
-    final Set<Permittable> annotations = getPermittableAnnotations(handlerMethod, defaultPermittable);
+          final Map.Entry<RequestMappingInfo, HandlerMethod> handlerMethod) {
+    final Set<SystemPermittable> annotations = getPermittableAnnotations(handlerMethod);
     final Set<String> patterns = handlerMethod.getKey().getPatternsCondition().getPatterns();
     final Set<RequestMethod> methods = handlerMethod.getKey().getMethodsCondition().getMethods();
-    return annotations.stream()
-            .map(annotation -> new WhatINeedToBuildAPermittableEndpoint(annotation, patterns, methods));
-  }
-
-  static private Set<Permittable> getPermittableAnnotations(
-      final Map.Entry<RequestMappingInfo, HandlerMethod> handlerMethod,
-      final Permittable defaultPermittable) {
-    final Method method = handlerMethod.getValue().getMethod();
-    final Set<Permittable> ret = AnnotationUtils.getRepeatableAnnotations(method, Permittable.class);
-    if (ret.isEmpty())
-      return Collections.singleton(defaultPermittable);
+    if (!annotations.isEmpty())
+      return annotations.stream()
+              .map(annotation -> new WhatINeedToBuildAPermittableEndpoint(annotation, patterns, methods));
     else
-      return ret;
+      return Stream.of(new WhatINeedToBuildAPermittableEndpoint(patterns, methods));
   }
 
-  static private Permittable guestPermittable() {
-    return new Permittable() {
-      @Override
-      public Class<? extends Annotation> annotationType() {
-        return Permittable.class;
-      }
-
-      @Override
-      public AcceptedTokenType value() {
-        return AcceptedTokenType.GUEST;
-      }
-
-      @Override
-      public String groupId() {
-        return "";
-      }
-
-      @Override
-      public String permittedEndpoint() {
-        return "";
-      }
-
-      @Override
-      public boolean acceptTokenIntendedForForeignApplication() {
-        return false;
-      }
-    };
-  }
-
-  static private Permittable systemPermittable() {
-    return new Permittable() {
-      @Override
-      public Class<? extends Annotation> annotationType() {
-        return Permittable.class;
-      }
-
-      @Override
-      public AcceptedTokenType value() {
-        return AcceptedTokenType.SYSTEM;
-      }
-
-      @Override
-      public String groupId() {
-        return "";
-      }
-
-      @Override
-      public String permittedEndpoint() {
-        return "";
-      }
-
-      @Override
-      public boolean acceptTokenIntendedForForeignApplication() {
-        return false;
-      }
-    };
+  static private Set<SystemPermittable> getPermittableAnnotations(
+          final Map.Entry<RequestMappingInfo, HandlerMethod> handlerMethod) {
+    final Method method = handlerMethod.getValue().getMethod();
+    return AnnotationUtils.getRepeatableAnnotations(method, SystemPermittable.class);
   }
 }

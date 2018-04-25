@@ -19,7 +19,7 @@
 package org.apache.fineract.cn.anubis.controller;
 
 import org.apache.fineract.cn.anubis.annotation.AcceptedTokenType;
-import org.apache.fineract.cn.anubis.annotation.Permittable;
+import org.apache.fineract.cn.anubis.annotation.SystemPermittable;
 import org.apache.fineract.cn.anubis.api.v1.domain.ApplicationSignatureSet;
 import org.apache.fineract.cn.anubis.api.v1.domain.Signature;
 import org.apache.fineract.cn.anubis.config.TenantSignatureRepository;
@@ -44,7 +44,7 @@ public class SignatureRestController {
     this.tenantSignatureRepository = tenantSignatureRepository;
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(
           value = "/signatures",
           method = RequestMethod.GET,
@@ -55,7 +55,7 @@ public class SignatureRestController {
     return ResponseEntity.ok(tenantSignatureRepository.getAllSignatureSetKeyTimestamps());
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(value = "/signatures/{timestamp}", method = RequestMethod.GET,
           consumes = {MediaType.ALL_VALUE},
           produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -67,7 +67,7 @@ public class SignatureRestController {
             .orElseThrow(() -> ServiceException.notFound("Signature for timestamp '" + timestamp + "' not found."));
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(value = "/signatures/_latest", method = RequestMethod.GET,
           consumes = {MediaType.ALL_VALUE},
           produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -79,7 +79,7 @@ public class SignatureRestController {
             .orElseThrow(() -> ServiceException.notFound("No valid signature found."));
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(value = "/signatures/{timestamp}", method = RequestMethod.DELETE,
           consumes = {MediaType.ALL_VALUE},
           produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -90,7 +90,7 @@ public class SignatureRestController {
     return ResponseEntity.accepted().build();
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(value = "/signatures/{timestamp}/application", method = RequestMethod.GET,
           consumes = {MediaType.ALL_VALUE},
           produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -102,7 +102,7 @@ public class SignatureRestController {
             .orElseThrow(() -> ServiceException.notFound("Signature for timestamp '" + timestamp + "' not found."));
   }
 
-  @Permittable(AcceptedTokenType.SYSTEM)
+  @SystemPermittable()
   @RequestMapping(value = "/signatures/_latest/application", method = RequestMethod.GET,
           consumes = {MediaType.ALL_VALUE},
           produces = {MediaType.APPLICATION_JSON_VALUE})

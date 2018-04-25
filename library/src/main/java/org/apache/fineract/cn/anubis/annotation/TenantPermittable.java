@@ -23,10 +23,12 @@ import java.lang.annotation.*;
 /**
  * @author Myrle Krantz
  */
-@SuppressWarnings({"WeakerAccess", "unused"})
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-public @interface Permittables {
-  Permittable[] value();
+@Repeatable(TenantPermittables.class)
+public @interface TenantPermittable {
+  String groupId() default "";
+  String permittedEndpoint() default "";
+  String applicationName();
 }
